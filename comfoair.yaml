@@ -1,55 +1,110 @@
 esphome:
   name: comfoair
   platform: ESP8266
-  board: esp01_1m
+  board: nodemcu
   includes:
     - comfoair.h
-
-wifi:
-  ssid: 'your-wifi-ssid-here'
-  password: 'put-your-wifi-password-here'
 
 # Disable uart logging
 logger:
   baud_rate: 0
 
-# Enable Home Assistant API
-api:
-  password: 'set-an-api-password-here'
-
-ota:
-
 sensor:
 binary_sensor:
+  - platform: gpio
+    pin: 
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+    name: "Mode button"
+    filters:
+      - invert:
+      - delayed_on: 10ms
+    on_click:
+      - min_length: 50ms
+        max_length: 350ms
+        then:
+          - climate.control: 
+              id: comfoair_climate
+              mode: FAN_ONLY
+              fan_mode: LOW
+      #- min_length: 5000ms
+      #  then:
+      #    - button.press: reset_button
+
+button:
+  - platform: restart
+    id: reset_button
+    name: "Room Comfoair"
 
 uart:
-  id: uart_bus
+- id: uart_bus
   baud_rate: 9600
   tx_pin: TX
   rx_pin: RX 
+- id: uart_proxy
+  baud_rate: 9600
+  tx_pin: GPIO5
+  rx_pin: GPIO14
+
+switch:
+  - platform: gpio
+    pin: GPIO12
+    name: "LED Green Light"
+    id: green_led
+  - platform: gpio
+    pin: GPIO13
+    name: "LED Blue Light"
+    id: blue_led
+  - platform: gpio
+    pin: GPIO15
+    name: "LED Red Light"
+    id: red_led
 
 climate:
 - platform: custom
+  # id: comfoair
   lambda: |-
-    auto ca = new esphome::comfoair::ComfoAirComponent(id(uart_bus));
+    auto ca = new esphome::comfoair::ComfoAirComponent(id(uart_bus), id(uart_proxy), id(green_led), id(blue_led), id(red_led));
     App.register_component(ca);
 
     ca->outside_air_temperature = new Sensor("Comfoair Outside Air");
+    ca->outside_air_temperature->set_unit_of_measurement("°C");
+    ca->outside_air_temperature->set_device_class("temperature");
+    ca->outside_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->outside_air_temperature);
     ca->supply_air_temperature = new Sensor("Comfoair Supply Air");
+    ca->supply_air_temperature->set_unit_of_measurement("°C");
+    ca->supply_air_temperature->set_device_class("temperature");
+    ca->supply_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->supply_air_temperature);
     ca->return_air_temperature = new Sensor("Comfoair Return Air");
+    ca->return_air_temperature->set_unit_of_measurement("°C");
+    ca->return_air_temperature->set_device_class("temperature");
+    ca->return_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->return_air_temperature);
     ca->exhaust_air_temperature = new Sensor("Comfoair Exhaust Air");
+    ca->exhaust_air_temperature->set_unit_of_measurement("°C");
+    ca->exhaust_air_temperature->set_device_class("temperature");
+    ca->exhaust_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->exhaust_air_temperature);
 
     ca->fan_supply_air_percentage = new Sensor("Comfoair Fan Supply Air");
+    ca->fan_supply_air_percentage->set_unit_of_measurement("%");
+    ca->fan_supply_air_percentage->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->fan_supply_air_percentage);
     ca->fan_exhaust_air_percentage = new Sensor("Comfoair Fan Exhaust Air");
+    ca->fan_exhaust_air_percentage->set_unit_of_measurement("%");
+    ca->fan_exhaust_air_percentage->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->fan_exhaust_air_percentage);
     ca->fan_speed_supply = new Sensor("Comfoair Fan Speed Supply");
+    ca->fan_speed_supply->set_unit_of_measurement("rpm");
+    ca->fan_speed_supply->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->fan_speed_supply);
     ca->fan_speed_exhaust = new Sensor("Comfoair Fan Speed Exhaust");
+    ca->fan_speed_exhaust->set_unit_of_measurement("rpm");
+    ca->fan_speed_exhaust->set_state_class(STATE_CLASS_MEASUREMENT);
     App.register_sensor(ca->fan_speed_exhaust);
 
     ca->is_bypass_valve_open = new BinarySensor();
@@ -72,9 +127,33 @@ climate:
     App.register_sensor(ca->return_air_level);
     ca->supply_air_level = new Sensor("Comfoair Supply Air Level");
     App.register_sensor(ca->supply_air_level);
+    
+    ca->reset_filter_button = new esphome::comfoair::ResetFilterButton("Reset Filter", ca);
+    App.register_button(ca->reset_filter_button);
 
     App.register_climate(ca);
     return {ca};
     
   climates:
-    - name: "put-yout-comfoair-name-here"
+    - name: "ComfoAir 310 SL"
+      id: comfoair_climate
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret comfoair_encryption_key
+
+ota:
+  password: !secret comfoair_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Comfoair Fallback Hotspot"
+    password: !secret comfoair_ap_password
+
+captive_portal:
+    
