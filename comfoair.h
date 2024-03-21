@@ -35,6 +35,12 @@ static const uint8_t COMFOAIR_GET_BOARD_VERSION_REQUEST = 0xa1;
 static const uint8_t COMFOAIR_GET_BOARD_VERSION_RESPONSE = 0xa2;
 static const uint8_t COMFOAIR_GET_BOARD_VERSION_LENGTH = 14;
 
+static const uint8_t COMFOAIR_SET_RS232_MODE_REQUEST = 0x9b;
+static const uint8_t COMFOAIR_SET_RS232_MODE_RESPONSE = 0x9c;
+static const uint8_t COMFOAIR_SET_RS232_MODE_LENGTH = 0x01;
+static const uint8_t COMFOAIR_SET_RS232_MODE_PC_MASTER = 0x03;
+static const uint8_t COMFOAIR_SET_RS232_MODE_PC_LOG = 0x04;
+
 static const uint8_t COMFOAIR_GET_INPUTS_REQUEST = 0x03;
 static const uint8_t COMFOAIR_GET_INPUTS_RESPONSE = 0x04;
 static const uint8_t COMFOAIR_GET_INPUTS_LENGTH = 0x02;
@@ -110,9 +116,6 @@ static const uint8_t COMFOAIR_SET_RESET_REQUEST = 0xdb;
 static const uint8_t COMFOAIR_SET_RESET_LENGTH = 0x04;
 static const uint8_t COMFOAIR_SET_EWT_REHEATER_REQUEST = 0xed;
 static const uint8_t COMFOAIR_SET_EWT_REHEATER_LENGTH = 0x05;
-static const uint8_t COMFOAIR_SET_RS232_MODE_REQUEST = 0x9b;
-static const uint8_t COMFOAIR_SET_RS232_MODE_RESPONSE = 0x9c;
-static const uint8_t COMFOAIR_SET_RS232_MODE_LENGTH = 0x01;
 
 // Specials setters
 static const uint8_t COMFOAIR_SET_TEST_MODE_START_REQUEST = 0x01;
@@ -127,10 +130,10 @@ static const float COMFOAIR_SUPPORTED_TEMP_STEP = 0.5f;
 
 class ResetFilterButton;
 
-class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTDevice {
+class ComfoAirComponent : public climate::Climate, public CustomAPIDevice, PollingComponent, uart::UARTDevice {
  public:
 
-  ComfoAirComponent(UARTComponent *uart_comfoair, UARTComponent *uart_proxy, gpio::GPIOSwitch* green_led, gpio::GPIOSwitch* blue_led, gpio::GPIOSwitch* red_led) : Climate("comfoair"), PollingComponent(2000), uart_comfoair_(uart_comfoair), uart_proxy_(uart_proxy), green_led_(green_led), blue_led_(blue_led), red_led_(red_led) {}
+  ComfoAirComponent(UARTComponent *uart_comfoair, UARTComponent *uart_proxy, gpio::GPIOSwitch* green_led, gpio::GPIOSwitch* blue_led, gpio::GPIOSwitch* red_led) : Climate(), PollingComponent(2000), uart_comfoair_(uart_comfoair), uart_proxy_(uart_proxy), green_led_(green_led), blue_led_(blue_led), red_led_(red_led) { set_name("comfoair"); }
 
   /// Return the traits of this controller.
   climate::ClimateTraits traits() override {
@@ -145,7 +148,7 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
       climate::CLIMATE_FAN_MEDIUM,
       climate::CLIMATE_FAN_HIGH,
       climate::CLIMATE_FAN_OFF,
-    }); 
+    });
     return traits;
   }
 
@@ -171,9 +174,9 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
         case climate::CLIMATE_FAN_AUTO:
           level = 0x00;
           break;
-        case climate::CLIMATE_FAN_FOCUS:
         case climate::CLIMATE_FAN_ON:
         case climate::CLIMATE_FAN_MIDDLE:
+        case climate::CLIMATE_FAN_FOCUS:
         case climate::CLIMATE_FAN_DIFFUSE:
         default:
           level = -1;
@@ -192,6 +195,29 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
 
     publish_state();
   }
+  
+  void setup() override {
+      register_service(&ComfoAirComponent::control_set_operation_mode, "climate_set_operation_mode", {"exhaust_fan", "supply_fan"});
+  }
+  
+  void control_set_operation_mode(bool exhaust, bool supply) {
+    ESP_LOGI(TAG, "Setting operation mode target exhaust: %i, supply: %i", exhaust, supply);
+    {
+      uint8_t command_data[COMFOAIR_SET_VENTILATION_LEVEL_LENGTH] = {
+          exhaust ? ventilation_levels_[0] : (uint8_t)0,
+          exhaust ? ventilation_levels_[2] : (uint8_t)0,
+          exhaust ? ventilation_levels_[4] : (uint8_t)0,
+          supply ? ventilation_levels_[1] : (uint8_t)0,
+          supply ? ventilation_levels_[3] : (uint8_t)0,
+          supply ? ventilation_levels_[5] : (uint8_t)0,
+          exhaust ? ventilation_levels_[6] : (uint8_t)0,
+          supply ? ventilation_levels_[7] : (uint8_t)0,
+          (uint8_t)0x00
+      };
+      write_command_(COMFOAIR_SET_VENTILATION_LEVEL_REQUEST, command_data, sizeof(command_data));
+    }
+  }
+  
 
   void dump_config() override {
     uint8_t *p;
@@ -218,7 +244,7 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
   void update() override {
     switch(update_counter_) {
       case -4:
-        set_rs232_mode(3);
+        set_rs232_mode(COMFOAIR_SET_RS232_MODE_PC_MASTER);
         break;
       case -3:
         write_command_(COMFOAIR_GET_BOOTLOADER_VERSION_REQUEST, nullptr, 0);
@@ -312,7 +338,7 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
  protected:
 
   void set_level_(int level) {
-    if (level < 0 || level > 5) {
+    if (level < 0 || level > 4) {
       ESP_LOGI(TAG, "Ignoring invalid level request: %i", level);
       return;
     }
@@ -366,19 +392,24 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
     uint8_t sum = 0;
     bool last_seven = false;
     for (uint8_t i = 0; i < length; i++) {
-      if (command_data[i] == 0x07) {
+      // The checksum counting logic is rather convoluted.
+      // It counts all bytes except if two consecutive bytes are
+      // 0x07 but only in the data section not in the header.
+      if (command_data[i] == 0x07 && i > 2) {
         if (last_seven) {
           last_seven = false;
           continue;
         }
         last_seven = true;
+      } else {
+        last_seven = false;
       }
       sum += command_data[i];
     }
-    return sum + 0xad;
+    return sum + 0xAD;
   }
 
-  optional<bool> check_byte_(uint8_t* data, uint8_t index) const {
+  optional<bool> check_byte_(uint8_t* data, uint8_t &index) {
     const uint8_t byte = data[index];
 
     if (index == 0)
@@ -404,15 +435,29 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
       return false;
     }
 
-    if (index < COMFOAIR_MSG_HEAD_LENGTH + data_length)
+    if (index < COMFOAIR_MSG_HEAD_LENGTH + data_length) {
+      if (byte == 0x07) {
+        if (encountered_seven_) {
+          encountered_seven_ = false;
+          index--;
+          return true;
+        }
+        encountered_seven_ = true;
+      } else {
+        encountered_seven_ = false;
+      }
       return true;
+    }
 
     if (index == COMFOAIR_MSG_HEAD_LENGTH + data_length) {
       // checksum is without checksum bytes
       uint8_t checksum = comfoair_checksum_(data + 2, COMFOAIR_MSG_HEAD_LENGTH + data_length - 2);
       if (checksum != byte) {
         //ESP_LOG_BUFFER_HEX(TAG, data_, index+1);
-        ESP_LOGW(TAG, "ComfoAir Checksum doesn't match: 0x%02X!=0x%02X", byte, checksum);
+        ESP_LOGW(TAG, "ComfoAir Checksum doesn't match: 0x%02X!=0x%02X (%d %02X %02X %02X %02X %02X %02X %02X %02X)", byte, checksum, data_length, data[COMFOAIR_MSG_IDENTIFIER_IDX], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
+        // Still can't find what is wrong with those checksums.
+        //if (data[COMFOAIR_MSG_IDENTIFIER_IDX] == 0x3e || data[COMFOAIR_MSG_IDENTIFIER_IDX] == 0xe6 || data[COMFOAIR_MSG_IDENTIFIER_IDX] == 0xec)
+        //  return true;
         return false;
       }
       return true;
@@ -507,12 +552,25 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
         if (enthalpy_temperature != nullptr) {
           enthalpy_temperature->publish_state((float) msg[0] / 2.0f - 20.0f);
         }
+        
+        if (enthalpy_humidity != nullptr) {
+          enthalpy_humidity->publish_state(msg[1]);
+        }
 
         break;
       }
       case COMFOAIR_GET_VENTILATION_LEVEL_RESPONSE: {
 
         ESP_LOGD(TAG, "Level %02x", msg[8]);
+        ESP_LOGW(TAG, "Abw ab %i - Abw zu %i - Low ab %i - Low zu %i - Middle ab %i - Middle zu %i - High ab %i - High zu %i", msg[0], msg[3], msg[1], msg[4], msg[2], msg[5], msg[10], msg[11]);
+        if (msg[0]) ventilation_levels_[0] = msg[0];
+        if (msg[3]) ventilation_levels_[1] = msg[3];
+        if (msg[1]) ventilation_levels_[2] = msg[1];
+        if (msg[4]) ventilation_levels_[3] = msg[4];
+        if (msg[2]) ventilation_levels_[4] = msg[2];
+        if (msg[5]) ventilation_levels_[5] = msg[5];
+        if (msg[10]) ventilation_levels_[6] = msg[10];
+        if (msg[11]) ventilation_levels_[7] = msg[11];
 
         if (return_air_level != nullptr) {
           return_air_level->publish_state(msg[6]);
@@ -544,7 +602,7 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
           case 0x03:
             fan_mode = climate::CLIMATE_FAN_MEDIUM;
             mode = climate::CLIMATE_MODE_FAN_ONLY;
-            green_led_->turn_off();
+            green_led_->turn_on();
             red_led_->turn_on();
           break;
           case 0x04:
@@ -690,8 +748,10 @@ class ComfoAirComponent : public climate::Climate, PollingComponent, uart::UARTD
   uint8_t data_index_{0};
   uint8_t proxy_data_[30];
   uint8_t proxy_data_index_{0};
+  bool encountered_seven_{false};
   
   int8_t update_counter_{-4};
+  uint8_t ventilation_levels_[8];
 
   uint8_t bootloader_version_[13]{0};
   uint8_t firmware_version_[13]{0};
@@ -715,6 +775,7 @@ public:
   sensor::Sensor *return_air_temperature{nullptr};
   sensor::Sensor *exhaust_air_temperature{nullptr};
   sensor::Sensor *enthalpy_temperature{nullptr};
+  sensor::Sensor *enthalpy_humidity{nullptr};
   sensor::Sensor *ewt_temperature{nullptr};
   sensor::Sensor *reheating_temperature{nullptr};
   sensor::Sensor *kitchen_hood_temperature{nullptr};
@@ -731,7 +792,7 @@ public:
 
 class ResetFilterButton : public button::Button {
   public:
-    ResetFilterButton(const std::string& name, ComfoAirComponent* comfoair) : button::Button(name), comfoair_(comfoair) {}
+    ResetFilterButton(const std::string& name, ComfoAirComponent* comfoair) : button::Button(), comfoair_(comfoair) { set_name(name.c_str()); }
     
   protected:
     void press_action() override {
