@@ -498,6 +498,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_ID): cv.declare_id(ComfoAirComponent),
             cv.Required(REQUIRED_KEY_NAME): cv.string,
+            cv.Required(CONF_PROXY_UART_ID): cv.use_id,
         }
     )
     .extend(uart.UART_DEVICE_SCHEMA)
