@@ -4,7 +4,7 @@ import esphome.config_validation as cv
 import esphome.codegen as cg
 from esphome.const import *
 from esphome.components import uart
-from esphome.components import gpio
+from esphome.components import switch
 from esphome.components import climate
 from esphome.components import sensor
 from esphome.components import binary_sensor
@@ -19,6 +19,9 @@ AUTO_LOAD = ["sensor", "climate", "binary_sensor", "text_sensor"]
 REQUIRED_KEY_NAME = "name"
 CONF_HUB_ID = "comfoair"
 CONF_PROXY_UART_ID = "proxy_uart"
+CONF_RED_LED_ID = "red_led"
+CONF_GREEN_LED_ID = "green_led"
+CONF_BLUE_LED_ID = "blue_led"
 
 UNIT_WEEK = "weeks"
 
@@ -42,6 +45,7 @@ CONF_RETURN_AIR_LEVEL = "return_air_level"
 CONF_SUPPLY_AIR_LEVEL = "supply_air_level"
 CONF_SUPPLY_FAN_ACTIVE = "supply_fan_active"
 CONF_FILTER_STATUS = "filter_status"
+CONF_FILTER_FULL = "filter_full"
 CONF_BYPASS_PRESENT = "bypass_present"
 CONF_ENTHALPY_PRESENT = "enthalpy_present"
 CONF_EWT_PRESENT = "ewt_present"
@@ -148,6 +152,7 @@ helper_comfoair = {
         CONF_SUMMER_MODE,
         CONF_SUPPLY_FAN_ACTIVE,
         CONF_FROST_PROTECTION_ACTIVE,
+        CONF_FILTER_FULL,
 
         CONF_P10_ACTIVE,
         CONF_P11_ACTIVE,
@@ -490,6 +495,9 @@ comfoair_sensors_schemas = cv.Schema(
         cv.Optional(CONF_P97_ACTIVE): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_EMPTY
         ).extend(),
+        cv.Optional(CONF_FILTER_FULL): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_EMPTY
+        ).extend(),
     }
 )
 
@@ -498,7 +506,10 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_ID): cv.declare_id(ComfoAirComponent),
             cv.Required(REQUIRED_KEY_NAME): cv.string,
-            cv.Required(CONF_PROXY_UART_ID): cv.use_id,
+            cv.Required(CONF_PROXY_UART_ID): cv.use_id(uart),
+            cv.Optional(CONF_RED_LED_ID): cv.use_id(switch),
+            cv.Optional(CONF_GREEN_LED_ID): cv.use_id(switch),
+            cv.Optional(CONF_BLUE_LED_ID): cv.use_id(switch),
         }
     )
     .extend(uart.UART_DEVICE_SCHEMA)
@@ -517,6 +528,15 @@ def to_code(config):
     paren = yield cg.get_variable(config[CONF_UART_ID])
     cg.add(var.set_uart_component(paren))
     cg.add(var.set_proxy_uart_component(proxy_uart))
+    if CONF_RED_LED_ID in config:
+      red_led = yield cg.get_variable(config[CONF_RED_LED_ID])
+      cg.add(var.set_red_led_component(red_led))
+    if CONF_GREEN_LED_ID in config:
+      green_led = yield cg.get_variable(config[CONF_GREEN_LED_ID])
+      cg.add(var.set_green_led_component(green_led))
+    if CONF_BLUE_LED_ID in config:
+      blue_led = yield cg.get_variable(config[CONF_BLUE_LED_ID])
+      cg.add(var.set_blue_led_component(blue_led))
     for k in helper_comfoair:
         for v in helper_comfoair[k]:
             if not v in config:
