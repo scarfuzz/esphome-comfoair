@@ -1,15 +1,14 @@
 """ Creates module ComfoAir """
 
-import esphome.config_validation as cv
 import esphome.codegen as cg
-from esphome.const import *
-from esphome.components import uart
-from esphome.components import switch
-from esphome.components import climate
-from esphome.components import sensor
-from esphome.components import binary_sensor
-from esphome.components import text_sensor
-from esphome import pins
+import esphome.config_validation as cv
+from esphome.components import binary_sensor, sensor, switch, text_sensor, uart
+from esphome.const import (CONF_ID, CONF_UART_ID, DEVICE_CLASS_CURRENT,
+                           DEVICE_CLASS_EMPTY, DEVICE_CLASS_SPEED,
+                           DEVICE_CLASS_TEMPERATURE, DEVICE_CLASS_VOLUME,
+                           STATE_CLASS_MEASUREMENT, UNIT_AMPERE, UNIT_CELSIUS,
+                           UNIT_CUBIC_METER, UNIT_HOUR, UNIT_MINUTE,
+                           UNIT_PERCENT, UNIT_REVOLUTIONS_PER_MINUTE)
 
 comfoair_ns = cg.esphome_ns.namespace("comfoair")
 ComfoAirComponent = comfoair_ns.class_("ComfoAirComponent", cg.Component)
@@ -50,6 +49,10 @@ CONF_BYPASS_PRESENT = "bypass_present"
 CONF_ENTHALPY_PRESENT = "enthalpy_present"
 CONF_EWT_PRESENT = "ewt_present"
 CONF_OPTIONS_PRESENT = "options_present"
+CONF_FIREPLACE_PRESENT = "fireplace_present"
+CONF_KITCHEN_HOOD_PRESENT = "kitchen_hood_present"
+CONF_POSTHEATING_PRESENT = "postheating_present"
+CONF_POSTHEATING_PWM_MODE_PRESENT = "postheating_pwm_mode_present"
 CONF_PREHEATING_PRESENT = "preheating_present"
 CONF_BYPASS_VALVE = "bypass_valve"
 CONF_BYPASS_VALVE_OPEN = "bypass_valve_open"
@@ -146,6 +149,10 @@ helper_comfoair = {
         CONF_ENTHALPY_PRESENT,
         CONF_EWT_PRESENT,
         CONF_OPTIONS_PRESENT,
+        CONF_FIREPLACE_PRESENT,
+        CONF_KITCHEN_HOOD_PRESENT,
+        CONF_POSTHEATING_PRESENT,
+        CONF_POSTHEATING_PWM_MODE_PRESENT,
         CONF_PREHEATING_PRESENT,
         CONF_BYPASS_VALVE_OPEN,
         CONF_PREHEATING_STATE,
@@ -426,6 +433,18 @@ comfoair_sensors_schemas = cv.Schema(
         cv.Optional(CONF_OPTIONS_PRESENT): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_EMPTY
         ).extend(),
+        cv.Optional(CONF_FIREPLACE_PRESENT): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_EMPTY
+        ).extend(),
+        cv.Optional(CONF_KITCHEN_HOOD_PRESENT): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_EMPTY
+        ).extend(),
+        cv.Optional(CONF_POSTHEATING_PRESENT): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_EMPTY
+        ).extend(),
+        cv.Optional(CONF_POSTHEATING_PWM_MODE_PRESENT): binary_sensor.binary_sensor_schema(
+            device_class=DEVICE_CLASS_EMPTY
+        ).extend(),
         cv.Optional(CONF_PREHEATING_PRESENT): binary_sensor.binary_sensor_schema(
             device_class=DEVICE_CLASS_EMPTY
         ).extend(),
@@ -537,8 +556,8 @@ def to_code(config):
     if CONF_BLUE_LED_ID in config:
       blue_led = yield cg.get_variable(config[CONF_BLUE_LED_ID])
       cg.add(var.set_blue_led_component(blue_led))
-    for k in helper_comfoair:
-        for v in helper_comfoair[k]:
+    for k, values in helper_comfoair.items():
+        for v in values:
             if not v in config:
                 continue
             sens = None
