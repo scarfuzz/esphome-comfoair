@@ -630,8 +630,9 @@ Byte[8] =
 
 Response: ACK
 */
-#define CMD_SET_VENTINATION_LEVEL 0xCF
-#define RES_SET_VENTINATION_LEVEL COMMAND_ACK
+#define CMD_SET_VENTILATION_LEVEL 0xCF
+#define CMD_SET_VENTILATION_LEVEL_LENGTH 9
+#define RES_SET_VENTILATION_LEVEL COMMAND_ACK
 
 /*
 Data: 1 byte
@@ -1010,19 +1011,3 @@ Response:
 */
 #define CMD_SEND_RF_COMMAND 0x40
 #define RES_SEND_RF_COMMAND []
-
-
-/*
-Data: 9 bytes
-Byte[0] = Exhaust air absent (%)
-Byte[1] = Supply air level absent (%)
-Byte[2] = Exhaust air low / level 1 (%)
-Byte[3] = Supply air low / level 1 (%)
-Byte[4] = Exhaust air medium / level 2 (%)
-Byte[5] = Supply air medium / level 2 (%)
-Byte[6] = Exhaust air high / level 3 (%)
-Byte[7] = Supply air high / level 3 (%)
-Byte[8] = 0x00
-*/
-#define CMD_SET_VENTILATION_LEVEL 0xCF
-#define CMD_SET_VENTILATION_LEVEL_LENGTH 9
