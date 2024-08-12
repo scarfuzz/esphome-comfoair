@@ -1,3 +1,5 @@
+[![Pylint](https://github.com/julianpas/esphome-comfoair/actions/workflows/pylint.yml/badge.svg)](https://github.com/julianpas/esphome-comfoair/actions/workflows/pylint.yml)
+
 # ComfoAir
 This is a clone of https://github.com/wichers/esphome-comfoair repo with a few modifications:
 
