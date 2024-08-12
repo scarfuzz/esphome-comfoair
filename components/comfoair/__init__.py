@@ -548,14 +548,14 @@ def to_code(config):
     cg.add(var.set_uart_component(paren))
     cg.add(var.set_proxy_uart_component(proxy_uart))
     if CONF_RED_LED_ID in config:
-      red_led = yield cg.get_variable(config[CONF_RED_LED_ID])
-      cg.add(var.set_red_led_component(red_led))
+        red_led = yield cg.get_variable(config[CONF_RED_LED_ID])
+        cg.add(var.set_red_led_component(red_led))
     if CONF_GREEN_LED_ID in config:
-      green_led = yield cg.get_variable(config[CONF_GREEN_LED_ID])
-      cg.add(var.set_green_led_component(green_led))
+        green_led = yield cg.get_variable(config[CONF_GREEN_LED_ID])
+        cg.add(var.set_green_led_component(green_led))
     if CONF_BLUE_LED_ID in config:
-      blue_led = yield cg.get_variable(config[CONF_BLUE_LED_ID])
-      cg.add(var.set_blue_led_component(blue_led))
+        blue_led = yield cg.get_variable(config[CONF_BLUE_LED_ID])
+        cg.add(var.set_blue_led_component(blue_led))
     for k, values in helper_comfoair.items():
         for v in values:
             if not v in config:
