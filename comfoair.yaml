@@ -2,8 +2,6 @@ esphome:
   name: comfoair
   platform: ESP8266
   board: nodemcu
-  includes:
-    - comfoair.h
 
 # Disable uart logging
 logger:
@@ -28,31 +26,17 @@ binary_sensor:
         - ON for at most 1s
         - OFF for at least 0.2s
         then:
-          - climate.control: 
-              id: comfoair_climate
-              mode: FAN_ONLY
-              fan_mode: MEDIUM
+          lambda: "id(comfoair_climate).set_level(3);"
       - timing:
         - ON for 1s to 2s
         - OFF for at least 0.5s
         then:
-          - climate.control: 
-              id: comfoair_climate
-              mode: FAN_ONLY
-              fan_mode: "OFF"
+          lambda: "id(comfoair_climate).set_level(1);"
       - timing:
         - ON for at most 1s
         - OFF for at least 0.5s
         then:
-          - climate.control: 
-              id: comfoair_climate
-              mode: FAN_ONLY
-              fan_mode: LOW
-
-button:
-  - platform: restart
-    id: reset_button
-    name: "Reset Comfoair"
+          lambda: "id(comfoair_climate).set_level(2);"
 
 uart:
 - id: uart_bus
@@ -64,139 +48,197 @@ uart:
   tx_pin: GPIO5
   rx_pin: GPIO14
 
+external_components:
+  - source:
+      type: git
+      url: https://github.com/julianpas/esphome-comfoair
+    components: ["comfoair"]
+
+button:
+  - platform: restart
+    id: reset_button
+    name: "Reset Comfoair"
+  - platform: template
+    id: filter_reset_button
+    name: "Reset Filter"
+    on_press: 
+      then:
+        lambda: "id(comfoair_climate).reset_filters();"
+
 switch:
   - platform: gpio
     pin: GPIO12
     name: "LED Green Light"
-    id: green_led
+    id: green_led_gpio
   - platform: gpio
     pin: GPIO13
     name: "LED Blue Light"
-    id: blue_led
+    id: blue_led_gpio
   - platform: gpio
     pin: GPIO15
     name: "LED Red Light"
-    id: red_led
+    id: red_led_gpio
 
-climate:
-- platform: custom
-  # id: comfoair
-  lambda: |-
-    auto ca = new esphome::comfoair::ComfoAirComponent(id(uart_bus), id(uart_proxy), id(green_led), id(blue_led), id(red_led));
-    App.register_component(ca);
-
-    ca->outside_air_temperature = new Sensor();
-    ca->outside_air_temperature->set_name("Comfoair Outside Air");
-    ca->outside_air_temperature->set_object_id("Comfoair Outside Air");
-    ca->outside_air_temperature->set_unit_of_measurement("°C");
-    ca->outside_air_temperature->set_device_class("temperature");
-    ca->outside_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->outside_air_temperature);
-    ca->supply_air_temperature = new Sensor();
-    ca->supply_air_temperature->set_name("Comfoair Supply Air");
-    ca->supply_air_temperature->set_object_id("Comfoair Supply Air");
-    ca->supply_air_temperature->set_unit_of_measurement("°C");
-    ca->supply_air_temperature->set_device_class("temperature");
-    ca->supply_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->supply_air_temperature);
-    ca->return_air_temperature = new Sensor();
-    ca->return_air_temperature->set_name("Comfoair Return Air");
-    ca->return_air_temperature->set_object_id("Comfoair Return Air");
-    ca->return_air_temperature->set_unit_of_measurement("°C");
-    ca->return_air_temperature->set_device_class("temperature");
-    ca->return_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->return_air_temperature);
-    ca->exhaust_air_temperature = new Sensor();
-    ca->exhaust_air_temperature->set_name("Comfoair Exhaust Air");
-    ca->exhaust_air_temperature->set_object_id("Comfoair Exhaust Air");
-    ca->exhaust_air_temperature->set_unit_of_measurement("°C");
-    ca->exhaust_air_temperature->set_device_class("temperature");
-    ca->exhaust_air_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->exhaust_air_temperature);
-    ca->enthalpy_temperature = new Sensor();
-    ca->enthalpy_temperature->set_name("Comfoair Enthalpie Temperature");
-    ca->enthalpy_temperature->set_object_id("Comfoair Enthalpie Temperature");
-    ca->enthalpy_temperature->set_unit_of_measurement("°C");
-    ca->enthalpy_temperature->set_device_class("temperature");
-    ca->enthalpy_temperature->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->enthalpy_temperature);
-    ca->enthalpy_humidity = new Sensor();
-    ca->enthalpy_humidity->set_name("Comfoair Enthalpie Humidity");
-    ca->enthalpy_humidity->set_object_id("Comfoair Enthalpie Humidity");
-    ca->enthalpy_humidity->set_unit_of_measurement("%");
-    ca->enthalpy_humidity->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->enthalpy_humidity);
-
-    ca->fan_supply_air_percentage = new Sensor();
-    ca->fan_supply_air_percentage->set_name("Comfoair Fan Supply Air");
-    ca->fan_supply_air_percentage->set_object_id("Comfoair Fan Supply Air");
-    ca->fan_supply_air_percentage->set_unit_of_measurement("%");
-    ca->fan_supply_air_percentage->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->fan_supply_air_percentage);
-    ca->fan_exhaust_air_percentage = new Sensor();
-    ca->fan_exhaust_air_percentage->set_name("Comfoair Fan Exhaust Air");
-    ca->fan_exhaust_air_percentage->set_object_id("Comfoair Fan Exhaust Air");
-    ca->fan_exhaust_air_percentage->set_unit_of_measurement("%");
-    ca->fan_exhaust_air_percentage->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->fan_exhaust_air_percentage);
-    ca->fan_speed_supply = new Sensor();
-    ca->fan_speed_supply->set_name("Comfoair Fan Speed Supply");
-    ca->fan_speed_supply->set_object_id("Comfoair Fan Speed Supply");
-    ca->fan_speed_supply->set_unit_of_measurement("rpm");
-    ca->fan_speed_supply->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->fan_speed_supply);
-    ca->fan_speed_exhaust = new Sensor();
-    ca->fan_speed_exhaust->set_name("Comfoair Fan Speed Exhaust");
-    ca->fan_speed_exhaust->set_object_id("Comfoair Fan Speed Exhaust");
-    ca->fan_speed_exhaust->set_unit_of_measurement("rpm");
-    ca->fan_speed_exhaust->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->fan_speed_exhaust);
-
-    ca->is_bypass_valve_open = new BinarySensor();
-    ca->is_bypass_valve_open->set_name("Comfoair Bypass Valve");
-    ca->is_bypass_valve_open->set_object_id("Comfoair Bypass Valve");
-    App.register_binary_sensor(ca->is_bypass_valve_open);
-    ca->is_preheating = new BinarySensor();
-    ca->is_preheating->set_name("Comfoair Preheating");
-    ca->is_preheating->set_object_id("Comfoair Preheating");
-    App.register_binary_sensor(ca->is_preheating);
-    ca->is_supply_fan_active = new BinarySensor();
-    ca->is_supply_fan_active->set_name("Comfoair Supply Fan");
-    ca->is_supply_fan_active->set_object_id("Comfoair Supply Fan");
-    App.register_binary_sensor(ca->is_supply_fan_active);
-    ca->is_filter_full = new BinarySensor();
-    ca->is_filter_full->set_name("Comfoair Filter Full");
-    ca->is_filter_full->set_object_id("Comfoair Filter Full");
-    App.register_binary_sensor(ca->is_filter_full);
-    ca->is_summer_mode = new BinarySensor();
-    ca->is_summer_mode->set_name("Comfoair Summer Mode");
-    ca->is_summer_mode->set_object_id("Comfoair Summer Mode");
-    App.register_binary_sensor(ca->is_summer_mode);
-
-    ca->return_air_level = new Sensor();
-    ca->return_air_level->set_name("Comfoair Return Air Level");
-    ca->return_air_level->set_object_id("Comfoair Return Air Level");
-    ca->return_air_level->set_unit_of_measurement("%");
-    ca->return_air_level->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->return_air_level);
-    ca->supply_air_level = new Sensor();
-    ca->supply_air_level->set_object_id("Comfoair Supply Air Level");
-    ca->supply_air_level->set_name("Comfoair Supply Air Level");
-    ca->supply_air_level->set_unit_of_measurement("%");
-    ca->supply_air_level->set_state_class(STATE_CLASS_MEASUREMENT);
-    App.register_sensor(ca->supply_air_level);
-    
-    ca->reset_filter_button = new esphome::comfoair::ResetFilterButton("Reset Filter", ca);
-    ca->reset_filter_button->set_name("Reset Filter");
-    ca->reset_filter_button->set_object_id("Reset Filter");
-    App.register_button(ca->reset_filter_button);
-
-    App.register_climate(ca);
-    return {ca};
-    
-  climates:
-    - name: "ComfoAir 310 SL"
-      id: comfoair_climate
+comfoair:
+  id: comfoair_climate
+  name: "ComfoAir 310 SL"
+  uart_id: uart_bus
+  proxy_uart: uart_proxy
+  red_led: red_led_gpio
+  green_led: green_led_gpio
+  blue_led: blue_led_gpio
+  type:
+    name: "type"
+  size:
+    name: "size"
+  intake_fan_speed:
+    name: "intake_fan_speed"
+  exhaust_fan_speed:
+    name: "exhaust_fan_speed"
+  intake_fan_speed_rpm:
+    name: "intake_fan_speed_rpm"
+  exhaust_fan_speed_rpm:
+    name: "exhaust_fan_speed_rpm"
+  ventilation_level:
+    name: "ventilation_level"
+  bypass_present:
+    name: "bypass_present"
+  bypass_valve:
+    name: "bypass_valve"
+  bypass_valve_open:
+    name: "bypass_valve_open"
+  preheating_state:
+    name: "preheating_state"
+  outside_air_temperature:
+    name: "outside_air_temperature"
+  supply_air_temperature:
+    name: "supply_air_temperature"
+  return_air_temperature:
+    name: "return_air_temperature"
+  exhaust_air_temperature:
+    name: "exhaust_air_temperature"
+  enthalpy_temperature:
+    name: "enthalpy_temperature"
+  ewt_temperature:
+    name: "ewt_temperature"
+  reheating_temperature:
+    name: "reheating_temperature"
+  kitchen_hood_temperature:
+    name: "kitchen_hood_temperature"
+  return_air_level:
+    name: "return_air_level"
+  supply_air_level:
+    name: "supply_air_level"
+  supply_fan_active:
+    name: "supply_fan_active"
+  filter_status:
+    name: "filter_status"
+  filter_full:
+    name: "is_filter_full"
+  enthalpy_present:
+    name: "enthalpy_present"
+  ewt_present:
+    name: "ewt_present"
+  options_present:
+    name: "options_present"
+  fireplace_present:
+    name: "fireplace_present"
+  kitchen_hood_present:
+    name: "kitchen_hood_present"
+  postheating_present:
+    name: "postheating_present"
+  postheating_pwm_mode_present:
+    name: "postheating_pwm_mode_present"
+  preheating_present:
+    name: "preheating_present"
+  bypass_factor:
+    name: "bypass_factor"
+  bypass_step:
+    name: "bypass_step"
+  bypass_correction:
+    name: "bypass_correction"
+  bypass_open_hours:
+    name: "bypass_open_hours"
+  preheating_hours:
+    name: "preheating_hours"
+  level0_hours:
+    name: "level0_hours"
+  level1_hours:
+    name: "level1_hours"
+  level2_hours:
+    name: "level2_hours"
+  level3_hours:
+    name: "level3_hours"
+  preheating_valve:
+    name: "preheating_valve"
+  frost_protection_active:
+    name: "frost_protection_active"
+  frost_protection_hours:
+    name: "frost_protection_hours"
+  frost_protection_minutes:
+    name: "frost_protection_minutes"
+  frost_protection_level:
+    name: "frost_protection_level"
+  filter_hours:
+    name: "filter_hours"
+  motor_current_bypass:
+    name: "motor_current_bypass"
+  motor_current_preheating:
+    name: "motor_current_preheating"
+  summer_mode:
+    name: "summer_mode"
+  p10_active:
+    name: "p10_active"
+  p11_active:
+    name: "p11_active"
+  p12_active:
+    name: "p12_active"
+  p13_active:
+    name: "p13_active"
+  p14_active:
+    name: "p14_active"
+  p15_active:
+    name: "p15_active"
+  p16_active:
+    name: "p16_active"
+  p17_active:
+    name: "p17_active"
+  p18_active:
+    name: "p18_active"
+  p19_active:
+    name: "p19_active"
+  p90_active:
+    name: "p90_active"
+  p91_active:
+    name: "p91_active"
+  p92_active:
+    name: "p92_active"
+  p93_active:
+    name: "p93_active"
+  p94_active:
+    name: "p94_active"
+  p95_active:
+    name: "p95_active"
+  p96_active:
+    name: "p96_active"
+  p97_active:
+    name: "p97_active"
+  bathroom_switch_on_delay_minutes:
+    name: "bathroom_switch_on_delay_minutes"
+  bathroom_switch_off_delay_minutes:
+    name: "bathroom_switch_off_delay_minutes"
+  l1_switch_off_delay_minutes:
+    name: "l1_switch_off_delay_minutes"
+  boost_ventilation_minutes:
+    name: "boost_ventilation_minutes"
+  filter_warning_weeks:
+    name: "filter_warning_weeks"
+  rf_high_time_short_minutes:
+    name: "rf_high_time_short_minutes"
+  rf_high_time_long_minutes:
+    name: "rf_high_time_long_minutes"
+  extractor_hood_switch_off_delay_minutes:
+    name: "extractor_hood_switch_off_delay_minutes"
 
 # Enable Home Assistant API
 api:
@@ -205,6 +247,7 @@ api:
 
 ota:
   password: !secret comfoair_ota_password
+  platform: esphome
 
 wifi:
   ssid: !secret wifi_ssid
