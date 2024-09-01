@@ -52,6 +52,7 @@ public:
 
   void control_set_curmode_speeds(int exhaust, int supply) {
     // Default values: Abw ab 16 - Abw zu 0 - Low ab 47 - Low zu 35 - Middle ab 67 - Middle zu 50 - High ab 87 - High zu 70
+    ESP_LOGI(TAG, "Setting speeds for level %i to: %i,%i", ventilation_level->state, exhaust, supply);
     uint8_t command_data[CMD_SET_VENTILATION_LEVEL_LENGTH] = {
         (ventilation_level->state==0x01) ? ventilation_levels_[0] : (uint8_t)exhaust,
         (ventilation_level->state==0x02) ? ventilation_levels_[2] : (uint8_t)exhaust,
@@ -69,14 +70,14 @@ public:
   void control_set_speeds(bool exhaust, bool supply, int off, int low, int mid, int high) {
     // Default values: Abw ab 16 - Abw zu 0 - Low ab 47 - Low zu 35 - Middle ab 67 - Middle zu 50 - High ab 87 - High zu 70
     uint8_t command_data[CMD_SET_VENTILATION_LEVEL_LENGTH] = {
-        exhaust ? ventilation_levels_[0] : (uint8_t)off,
-        exhaust ? ventilation_levels_[2] : (uint8_t)low,
-        exhaust ? ventilation_levels_[4] : (uint8_t)mid,
-        supply ? ventilation_levels_[1] : (uint8_t)off,
-        supply ? ventilation_levels_[3] : (uint8_t)low,
-        supply ? ventilation_levels_[5] : (uint8_t)mid,
-        exhaust ? ventilation_levels_[6] : (uint8_t)high,
-        supply ? ventilation_levels_[7] : (uint8_t)high,
+        !exhaust ? ventilation_levels_[0] : (uint8_t)off,
+        !exhaust ? ventilation_levels_[2] : (uint8_t)low,
+        !exhaust ? ventilation_levels_[4] : (uint8_t)mid,
+        !supply ? ventilation_levels_[1] : (uint8_t)off,
+        !supply ? ventilation_levels_[3] : (uint8_t)low,
+        !supply ? ventilation_levels_[5] : (uint8_t)mid,
+        !exhaust ? ventilation_levels_[6] : (uint8_t)high,
+        !supply ? ventilation_levels_[7] : (uint8_t)high,
         (uint8_t)0x00
     };
     write_command_(CMD_SET_VENTILATION_LEVEL, command_data, sizeof(command_data));
