@@ -327,7 +327,7 @@ protected:
       // The checksum counting logic is rather convoluted.
       // It counts all bytes except if two consecutive bytes are
       // 0x07 but only in the data section not in the header.
-      if (command_data[i] == 0x07/* && i > 2*/) {
+      if (command_data[i] == 0x07 && i > 2) {
         if (last_seven) {
           //last_seven = false;
           continue;
