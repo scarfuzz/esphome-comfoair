@@ -321,24 +321,24 @@ protected:
 }
 
   uint8_t comfoair_checksum_(const uint8_t *command_data, uint8_t length) const {
-    uint8_t sum = 0;
+    uint8_t sum = 0xAD;
     bool last_seven = false;
     for (uint8_t i = 0; i < length; i++) {
       // The checksum counting logic is rather convoluted.
       // It counts all bytes except if two consecutive bytes are
       // 0x07 but only in the data section not in the header.
-      if (command_data[i] == 0x07 && i > 2) {
+      if (command_data[i] == 0x07/* && i > 2*/) {
         if (last_seven) {
-          last_seven = false;
+          //last_seven = false;
           continue;
         }
         last_seven = true;
-      } else {
+      }/* else {
         last_seven = false;
-      }
+      }*/
       sum += command_data[i];
     }
-    return sum + 0xAD;
+    return sum;
   }
 
   optional<bool> check_byte_(uint8_t* data, uint8_t &index) {
