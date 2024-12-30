@@ -366,7 +366,7 @@ protected:
       ESP_LOGW(TAG, "ComfoAir message too large");
       return false;
     }
-
+/*
     if (index < COMMAND_LEN_HEAD + data_length) {
       if (byte == 0x07) {
         if (encountered_seven_) {
@@ -378,15 +378,16 @@ protected:
       } else {
         encountered_seven_ = false;
       }
-      return true;
+      //return true;
     }
-
+*/
     if (index == COMMAND_LEN_HEAD + data_length) {
       // checksum is without checksum bytes
       uint8_t checksum = comfoair_checksum_(data + 2, COMMAND_LEN_HEAD + data_length - 2);
       if (checksum != byte) {
         //ESP_LOG_BUFFER_HEX(TAG, data_, index+1);
-        ESP_LOGW(TAG, "ComfoAir Checksum doesn't match: 0x%02X!=0x%02X (%d %02X %02X %02X %02X %02X %02X %02X %02X)", byte, checksum, data_length, data[COMMAND_IDX_MSG_ID], data[6], data[7], data[8], data[9], data[10], data[11], data[12]);
+        //[10:58:52][W][comfoair:389]: ComfoAir Checksum doesn't match: 0x07!=0xDD (4 3E 09 FA 07 07 00 00 C8)
+        ESP_LOGW(TAG, "Checksum mismatch: r:0x%02X!=c:0x%02X (l:%d cmd:%02X [%02X  %02X %02X  %02X %02X  %02X %02X %02X %02X %02X %02X])", byte, checksum, data_length, data[COMMAND_IDX_MSG_ID], data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10]);
         // Still can't find what is wrong with those checksums.
         //if (data[COMMAND_IDX_MSG_ID] == 0x3e || data[COMMAND_IDX_MSG_ID] == 0xe6 || data[COMMAND_IDX_MSG_ID] == 0xec)
         //  return true;
