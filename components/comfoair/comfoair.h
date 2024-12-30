@@ -366,7 +366,7 @@ protected:
       ESP_LOGW(TAG, "ComfoAir message too large");
       return false;
     }
-/*
+
     if (index < COMMAND_LEN_HEAD + data_length) {
       if (byte == 0x07) {
         if (encountered_seven_) {
@@ -380,7 +380,7 @@ protected:
       }
       //return true;
     }
-*/
+
     if (index == COMMAND_LEN_HEAD + data_length) {
       // checksum is without checksum bytes
       uint8_t checksum = comfoair_checksum_(data + 2, COMMAND_LEN_HEAD + data_length - 2);
