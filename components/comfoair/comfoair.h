@@ -329,13 +329,21 @@ protected:
       // 0x07 but only in the data section not in the header.
       if (command_data[i] == 0x07 && i > 2) {
         if (last_seven) {
-          //last_seven = false;
+          last_seven = false;
           continue;
         }
         last_seven = true;
-      }/* else {
+      } else {
         last_seven = false;
-      }*/
+      }
+      sum += command_data[i];
+    }
+    return sum;
+  }
+
+  uint8_t comfoair_checksum_in_(const uint8_t *command_data, uint8_t length) const {
+    uint8_t sum = 0xAD;
+    for (uint8_t i = 0; i < length; i++) {
       sum += command_data[i];
     }
     return sum;
@@ -367,7 +375,7 @@ protected:
       return false;
     }
 
-    if (index < COMMAND_LEN_HEAD + data_length) {
+    if (index < COMMAND_LEN_HEAD + data_length || encountered_seven_) {
       if (byte == 0x07) {
         if (encountered_seven_) {
           encountered_seven_ = false;
@@ -383,7 +391,7 @@ protected:
 
     if (index == COMMAND_LEN_HEAD + data_length) {
       // checksum is without checksum bytes
-      uint8_t checksum = comfoair_checksum_(data + 2, COMMAND_LEN_HEAD + data_length - 2);
+      uint8_t checksum = comfoair_checksum_in_(data + 2, COMMAND_LEN_HEAD + data_length - 2);
       if (checksum != byte) {
         //ESP_LOG_BUFFER_HEX(TAG, data_, index+1);
         //[10:58:52][W][comfoair:389]: ComfoAir Checksum doesn't match: 0x07!=0xDD (4 3E 09 FA 07 07 00 00 C8)
