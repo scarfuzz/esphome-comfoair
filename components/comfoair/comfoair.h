@@ -378,7 +378,7 @@ protected:
       } else {
         encountered_seven_ = false;
       }
-      //return true;
+      return true;
     }
 
     if (index == COMMAND_LEN_HEAD + data_length) {
