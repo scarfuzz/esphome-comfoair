@@ -240,7 +240,7 @@ public:
       if (!check.has_value()) {
 
         // finished
-        ESP_LOGV(TAG, "Response 0x%02X from confosense with %i bytes.", data_[COMMAND_IDX_MSG_ID], data_index_+1);
+        ESP_LOGD(TAG, "Response 0x%02X from confosense with %i bytes.", data_[COMMAND_IDX_MSG_ID], data_index_+1);
         if (data_[COMMAND_ID_ACK] != COMMAND_ACK) {
           parse_data_();
         }
@@ -508,7 +508,7 @@ protected:
       case RES_GET_VENTILATION_LEVEL: {
 
         ESP_LOGD(TAG, "Level %02x", msg[8]);
-        ESP_LOGW(TAG, "Off ab %i - Off zu %i - Low ab %i - Low zu %i - Middle ab %i - Middle zu %i - High ab %i - High zu %i", msg[0], msg[3], msg[1], msg[4], msg[2], msg[5], msg[10], msg[11]);
+        ESP_LOGD(TAG, "Off ab %i - Off zu %i - Low ab %i - Low zu %i - Middle ab %i - Middle zu %i - High ab %i - High zu %i", msg[0], msg[3], msg[1], msg[4], msg[2], msg[5], msg[10], msg[11]);
 
         if (return_air_level != nullptr) {
           return_air_level->publish_state(msg[6]);
